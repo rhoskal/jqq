@@ -1,6 +1,6 @@
 # Build configuration
 # -------------------
-APP_NAME = `grep -Eo 'name: .*' pj.cabal | cut -d ':' -f 2 | awk '{print $1}'`
+APP_NAME = `grep -Eo 'name: .*' jqq.cabal | cut -d ':' -f 2 | awk '{print $1}'`
 GIT_BRANCH = `git rev-parse --abbrev-ref HEAD`
 GIT_REVISION = `git rev-parse HEAD`
 
