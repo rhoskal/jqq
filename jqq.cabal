@@ -89,7 +89,7 @@ library
     build-depends:
         base ^>=4.18.2.1,
         bytestring,
-        text
+        word8
 
     -- Directories containing source files.
     hs-source-dirs:   lib
@@ -133,7 +133,9 @@ test-suite jqq-test
     default-language: GHC2021
 
     -- Modules included in this executable, other than Main.
-    -- other-modules:
+    other-modules:
+        FormatterSpec
+        ParserSpec
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
@@ -151,4 +153,5 @@ test-suite jqq-test
     build-depends:
         base ^>=4.18.2.1,
         jqq,
-        hspec
+        hspec,
+        word8

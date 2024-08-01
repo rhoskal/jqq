@@ -3,67 +3,93 @@ module Parser where
 import Control.Applicative
   ( Alternative,
     empty,
-    many,
     (<|>),
   )
 import Control.Monad ((>=>))
 import Data.ByteString qualified as B
 import Data.ByteString.Char8 (readInteger)
-import Data.Char (ord)
 import Data.Word (Word8)
+import Data.Word8 qualified as W
 
 -- | Combinators
-
-char :: Char -> Parser B.ByteString
-char c = Parser $ \input ->
-  let (c', rest) = B.splitAt 1 input
-   in if c' == B.singleton (fromIntegral $ ord c)
-        then pure (c', rest)
+char :: Word8 -> Parser Word8
+char w = lexeme $ Parser $ \input ->
+  let (bs, rest) = B.splitAt 1 input
+   in if bs == B.singleton w
+        then pure (w, rest)
         else empty
 
 string :: B.ByteString -> Parser B.ByteString
-string bs = Parser $ \input ->
+string bs = lexeme $ Parser $ \input ->
   let (matched, rest) = B.splitAt (B.length bs) input
    in if matched == bs
         then pure (matched, rest)
         else empty
 
 many1 :: (Word8 -> Bool) -> Parser B.ByteString
-many1 predicate = Parser $ \input ->
+many1 predicate = lexeme $ Parser $ \input ->
   let (matched, rest) = B.span predicate input
    in if B.null matched
         then empty
         else pure (matched, rest)
 
-spanP :: (Word8 -> Bool) -> Parser B.ByteString
-spanP predicate = Parser $ \input ->
-  let (matched, rest) = B.span predicate input
-   in pure (matched, rest)
+manyTill :: (Word8 -> Bool) -> Parser B.ByteString
+manyTill predicate = Parser $ \input ->
+  pure $ B.span predicate input
 
-optional :: Parser a -> Parser (Maybe a)
-optional (Parser p) = Parser $ \input ->
+skipMany :: (Word8 -> Bool) -> Parser B.ByteString
+skipMany predicate = Parser $ \input ->
+  let rest = B.dropWhile predicate input
+   in pure (B.empty, rest)
+
+optionMaybe :: Parser a -> Parser (Maybe a)
+optionMaybe (Parser p) = Parser $ \input ->
   case p input of
     Just (matched, rest) -> pure (Just matched, rest)
     Nothing -> pure (Nothing, input)
 
 sepBy :: Parser a -> Parser b -> Parser [b]
-sepBy sep element = (:) <$> element <*> many (sep *> element) <|> pure []
+sepBy sep element = elements <|> pure []
+  where
+    elements = (:) <$> element <*> restElements
+    restElements = (sep *> element >>= \e -> (e :) <$> restElements) <|> pure []
 
-sepBy1 :: Parser a -> Parser b -> Parser [b]
-sepBy1 sep element = (:) <$> element <*> many (sep *> element)
-
-digit :: Word8 -> Bool
-digit word = word >= 48 && word <= 57
-
-space :: Word8 -> Bool
-space word =
-  word == 32 {- space -}
-    || word == 10 {- line feed-}
-    || word == 13 {- carriage return -}
-    || word == 9 {- horizontal tab -}
+isSpace :: Word8 -> Bool
+isSpace w =
+  w == W._space
+    || w == W._lf
+    || w == W._cr
+    || w == W._tab
 
 ws :: Parser B.ByteString
-ws = spanP space
+ws = skipMany isSpace
+
+lexeme :: Parser a -> Parser a
+lexeme p = ws *> p <* ws
+
+comma :: Parser Word8
+comma = char W._comma
+
+bracketL :: Parser Word8
+bracketL = char W._bracketleft
+
+bracketR :: Parser Word8
+bracketR = char W._bracketright
+
+braceL :: Parser Word8
+braceL = char W._braceleft
+
+braceR :: Parser Word8
+braceR = char W._braceright
+
+quoteDouble :: Parser Word8
+quoteDouble = char W._quotedbl
+
+hyphen :: Parser Word8
+hyphen = char W._hyphen
+
+colon :: Parser Word8
+colon = char W._colon
 
 -- | Parsers
 data JsonValue
@@ -76,27 +102,34 @@ data JsonValue
   deriving (Eq, Show)
 
 jsonObject :: Parser JsonValue
-jsonObject = JObject <$> (char '{' *> pairs <* char '}')
+jsonObject = JObject <$> (braceL *> ws *> pairs <* ws <* braceR)
   where
     pairs :: Parser [(B.ByteString, JsonValue)]
-    pairs = pure []
+    pairs = sepBy (ws *> comma <* ws) (ws *> pair <* ws)
+
+    pair :: Parser (B.ByteString, JsonValue)
+    pair =
+      (\key _ value -> (key, value))
+        <$> stringLiteral
+        <*> (ws *> colon <* ws)
+        <*> jsonValue
 
 jsonArray :: Parser JsonValue
-jsonArray = JArray <$> (char '[' *> ws *> elements <* ws <* char ']')
+jsonArray = JArray <$> (bracketL *> ws *> elements <* ws <* bracketR)
   where
     elements :: Parser [JsonValue]
-    elements = sepBy (ws *> char ',' <* ws) jsonValue
+    elements = sepBy (ws *> comma <* ws) (ws *> jsonValue <* ws)
 
 jsonString :: Parser JsonValue
-jsonString = JString <$> (char '"' *> stringLiteral <* char '"')
-  where
-    stringLiteral :: Parser B.ByteString
-    stringLiteral = spanP (/= 34)
+jsonString = JString <$> stringLiteral
+
+stringLiteral :: Parser B.ByteString
+stringLiteral = quoteDouble *> manyTill (/= W._quotedbl) <* quoteDouble
 
 jsonNumber :: Parser JsonValue
 jsonNumber = Parser $ \input -> do
-  let Parser parseMinus = optional (char '-')
-  let Parser parseDigits = many1 digit
+  let Parser parseMinus = optionMaybe (B.singleton <$> hyphen)
+  let Parser parseDigits = many1 W.isDigit
   (minusSign, rest) <- parseMinus input
   (digits, rest') <- parseDigits rest
   let numStr = maybe digits (`B.append` digits) minusSign
@@ -115,12 +148,14 @@ jsonBool =
 
 jsonValue :: Parser JsonValue
 jsonValue =
-  jsonBool
-    <|> jsonNull
-    <|> jsonNumber
-    <|> jsonString
-    <|> jsonArray
-    <|> jsonObject
+  lexeme
+    ( jsonBool
+        <|> jsonNull
+        <|> jsonNumber
+        <|> jsonString
+        <|> jsonArray
+        <|> jsonObject
+    )
 
 parse :: B.ByteString -> Maybe JsonValue
 parse input = fst <$> runParser jsonValue input
@@ -188,4 +223,3 @@ instance Monad Parser where
 
   return :: a -> Parser a
   return = pure
-
