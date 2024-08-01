@@ -58,8 +58,11 @@ optionMaybe (Parser p) = Parser $ \input ->
     Left _ -> pure (Nothing, input)
     Right (matched, rest) -> pure (Just matched, rest)
 
-sepBy :: Parser a -> Parser b -> Parser [b]
-sepBy sep element = (:) <$> element <*> many (sep *> element) <|> pure []
+sepBy :: Parser a -> Parser sep -> Parser [a]
+sepBy p sep = sepBy1 p sep <|> pure []
+
+sepBy1 :: Parser a -> Parser sep -> Parser [a]
+sepBy1 p sep = (:) <$> p <*> many (sep *> p)
 
 isSpace :: Word8 -> Bool
 isSpace w =
@@ -95,7 +98,7 @@ jsonObject :: Parser JsonValue
 jsonObject = JObject <$> (braceL *> pairs <* braceR)
   where
     pairs :: Parser [(B.ByteString, JsonValue)]
-    pairs = sepBy (ws *> comma <* ws) pair
+    pairs = sepBy pair (ws *> comma <* ws)
 
     pair :: Parser (B.ByteString, JsonValue)
     pair = liftA2 (,) (stringLiteral <* ws <* colon <* ws) jsonValue
@@ -104,7 +107,7 @@ jsonArray :: Parser JsonValue
 jsonArray = JArray <$> (bracketL *> elements <* bracketR)
   where
     elements :: Parser [JsonValue]
-    elements = sepBy (ws *> comma <* ws) jsonValue
+    elements = sepBy jsonValue (ws *> comma <* ws)
 
 jsonString :: Parser JsonValue
 jsonString = JString <$> stringLiteral
