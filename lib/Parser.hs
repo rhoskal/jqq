@@ -3,6 +3,7 @@ module Parser where
 import Control.Applicative
   ( Alternative,
     empty,
+    many,
     (<|>),
   )
 import Control.Monad ((>=>))
@@ -13,21 +14,21 @@ import Data.Word8 qualified as W
 
 -- | Combinators
 char :: Word8 -> Parser Word8
-char w = lexeme $ Parser $ \input ->
+char w = Parser $ \input ->
   let (bs, rest) = B.splitAt 1 input
    in if bs == B.singleton w
         then pure (w, rest)
         else empty
 
 string :: B.ByteString -> Parser B.ByteString
-string bs = lexeme $ Parser $ \input ->
+string bs = Parser $ \input ->
   let (matched, rest) = B.splitAt (B.length bs) input
    in if matched == bs
         then pure (matched, rest)
         else empty
 
 many1 :: (Word8 -> Bool) -> Parser B.ByteString
-many1 predicate = lexeme $ Parser $ \input ->
+many1 predicate = Parser $ \input ->
   let (matched, rest) = B.span predicate input
    in if B.null matched
         then empty
@@ -49,10 +50,7 @@ optionMaybe (Parser p) = Parser $ \input ->
     Nothing -> pure (Nothing, input)
 
 sepBy :: Parser a -> Parser b -> Parser [b]
-sepBy sep element = elements <|> pure []
-  where
-    elements = (:) <$> element <*> restElements
-    restElements = (sep *> element >>= \e -> (e :) <$> restElements) <|> pure []
+sepBy sep element = (:) <$> element <*> many (sep *> element) <|> pure []
 
 isSpace :: Word8 -> Bool
 isSpace w =
@@ -63,9 +61,6 @@ isSpace w =
 
 ws :: Parser B.ByteString
 ws = skipMany isSpace
-
-lexeme :: Parser a -> Parser a
-lexeme p = ws *> p <* ws
 
 comma :: Parser Word8
 comma = char W._comma
@@ -105,20 +100,16 @@ jsonObject :: Parser JsonValue
 jsonObject = JObject <$> (braceL *> ws *> pairs <* ws <* braceR)
   where
     pairs :: Parser [(B.ByteString, JsonValue)]
-    pairs = sepBy (ws *> comma <* ws) (ws *> pair <* ws)
+    pairs = sepBy (ws *> comma <* ws) pair
 
     pair :: Parser (B.ByteString, JsonValue)
-    pair =
-      (\key _ value -> (key, value))
-        <$> stringLiteral
-        <*> (ws *> colon <* ws)
-        <*> jsonValue
+    pair = liftA2 (,) (stringLiteral <* ws <* colon <* ws) jsonValue
 
 jsonArray :: Parser JsonValue
 jsonArray = JArray <$> (bracketL *> ws *> elements <* ws <* bracketR)
   where
     elements :: Parser [JsonValue]
-    elements = sepBy (ws *> comma <* ws) (ws *> jsonValue <* ws)
+    elements = sepBy (ws *> comma <* ws) jsonValue
 
 jsonString :: Parser JsonValue
 jsonString = JString <$> stringLiteral
@@ -137,25 +128,22 @@ jsonNumber = Parser $ \input -> do
   pure (JNumber num, rest')
 
 jsonNull :: Parser JsonValue
-jsonNull = Parser $ \input -> do
-  let Parser p = string "null"
-   in p input >>= (\(_, rest) -> pure (JNull, rest))
+jsonNull = JNull <$ string "null"
 
 jsonBool :: Parser JsonValue
-jsonBool =
-  JBool . const True <$> string "true"
-    <|> JBool . const False <$> string "false"
+jsonBool = jsonTrue <|> jsonFalse
+  where
+    jsonTrue = JBool True <$ string "true"
+    jsonFalse = JBool False <$ string "false"
 
 jsonValue :: Parser JsonValue
 jsonValue =
-  lexeme
-    ( jsonBool
-        <|> jsonNull
-        <|> jsonNumber
-        <|> jsonString
-        <|> jsonArray
-        <|> jsonObject
-    )
+  jsonBool
+    <|> jsonNull
+    <|> jsonNumber
+    <|> jsonString
+    <|> jsonArray
+    <|> jsonObject
 
 parse :: B.ByteString -> Maybe JsonValue
 parse input = fst <$> runParser jsonValue input
