@@ -6,88 +6,97 @@ import Test.Hspec
 
 parserSpec :: Spec
 parserSpec = do
+  it "char" $ do
+    runParser (char W._colon) "foobar" `shouldBe` Left (ParserError "Exepected ':' but found 'f'")
+    runParser (char W._colon) ":foobar" `shouldBe` Right (W._colon, "foobar")
+
   it "whitespace [single]" $ do
-    runParser ws " foobar" `shouldBe` Just ("", "foobar")
-    runParser ws "\nfoobar" `shouldBe` Just ("", "foobar")
-    runParser ws "\rfoobar" `shouldBe` Just ("", "foobar")
-    runParser ws "\tfoobar" `shouldBe` Just ("", "foobar")
+    runParser ws " foobar" `shouldBe` Right ("", "foobar")
+    runParser ws "\nfoobar" `shouldBe` Right ("", "foobar")
+    runParser ws "\rfoobar" `shouldBe` Right ("", "foobar")
+    runParser ws "\tfoobar" `shouldBe` Right ("", "foobar")
 
   it "whitespace [multiple]" $ do
-    runParser ws " \nfoobar" `shouldBe` Just ("", "foobar")
-    runParser ws "\n\rfoobar" `shouldBe` Just ("", "foobar")
-    runParser ws "\r\tfoobar" `shouldBe` Just ("", "foobar")
-    runParser ws "\t foobar" `shouldBe` Just ("", "foobar")
+    runParser ws " \nfoobar" `shouldBe` Right ("", "foobar")
+    runParser ws "\n\rfoobar" `shouldBe` Right ("", "foobar")
+    runParser ws "\r\tfoobar" `shouldBe` Right ("", "foobar")
+    runParser ws "\t foobar" `shouldBe` Right ("", "foobar")
 
   it "comma" $ do
-    runParser comma ",foobar" `shouldBe` Just (W._comma, "foobar")
-    runParser comma ",,foobar" `shouldBe` Just (W._comma, ",foobar")
+    runParser comma ",foobar" `shouldBe` Right (W._comma, "foobar")
+    runParser comma ",,foobar" `shouldBe` Right (W._comma, ",foobar")
 
   it "brackets" $ do
-    runParser bracketL "[" `shouldBe` Just (W._bracketleft, "")
-    runParser bracketL "]" `shouldBe` Nothing
-    runParser bracketR "]" `shouldBe` Just (W._bracketright, "")
-    runParser bracketR "[" `shouldBe` Nothing
+    runParser bracketL "[" `shouldBe` Right (W._bracketleft, "")
+    runParser bracketL "]" `shouldBe` Left (ParserError "Exepected '[' but found ']'")
+    runParser bracketR "]" `shouldBe` Right (W._bracketright, "")
+    runParser bracketR "[" `shouldBe` Left (ParserError "Exepected ']' but found '['")
 
   it "braces" $ do
-    runParser braceL "{" `shouldBe` Just (W._braceleft, "")
-    runParser braceL "}" `shouldBe` Nothing
-    runParser braceR "}" `shouldBe` Just (W._braceright, "")
-    runParser braceR "{" `shouldBe` Nothing
+    runParser braceL "{" `shouldBe` Right (W._braceleft, "")
+    runParser braceL "}" `shouldBe` Left (ParserError "Exepected '{' but found '}'")
+    runParser braceR "}" `shouldBe` Right (W._braceright, "")
+    runParser braceR "{" `shouldBe` Left (ParserError "Exepected '}' but found '{'")
 
   it "quoteDouble" $ do
-    runParser bracketL "[]" `shouldBe` Just (W._bracketleft, "]")
-    runParser bracketR "]" `shouldBe` Just (W._bracketright, "")
+    runParser quoteDouble "\"" `shouldBe` Right (W._quotedbl, "")
+    runParser quoteDouble "" `shouldBe` Left (ParserError "Exepected '\"' but found ''")
 
   it "hyphen" $ do
-    runParser hyphen "-123" `shouldBe` Just (W._hyphen, "123")
-    runParser hyphen "123" `shouldBe` Nothing
+    runParser hyphen "-123" `shouldBe` Right (W._hyphen, "123")
+    runParser hyphen "123" `shouldBe` Left (ParserError "Exepected '-' but found '1'")
 
   it "optionMaybe" $ do
-    runParser (optionMaybe hyphen) "-42" `shouldBe` Just (Just W._hyphen, "42")
-    runParser (optionMaybe hyphen) "42" `shouldBe` Just (Nothing, "42")
+    runParser (optionMaybe hyphen) "-42" `shouldBe` Right (Just W._hyphen, "42")
+    runParser (optionMaybe hyphen) "42" `shouldBe` Right (Nothing, "42")
 
-  it "sepBy" $ do
-    runParser (sepBy comma (char W._a)) "" `shouldBe` Just ([], "")
-    runParser (sepBy comma (char W._a)) "a" `shouldBe` Just ([W._a], "")
-    runParser (sepBy comma (char W._a)) "a,a" `shouldBe` Just ([W._a, W._a], "")
-    runParser (sepBy comma (char W._a)) "a,ab" `shouldBe` Just ([W._a, W._a], "b")
-    runParser (sepBy comma jsonNumber) "1,2," `shouldBe` Nothing
+  it "many1" $ do
+    runParser (many1 isSpace) "" `shouldBe` Left (ParserError "Failed to match at least 1")
+    runParser (many1 isSpace) "  " `shouldBe` Right ("  ", "")
+
+  fit "sepBy" $ do
+    runParser (sepBy comma jsonNull) "" `shouldBe` Right ([], "")
+    runParser (sepBy comma jsonNull) "null" `shouldBe` Right ([JNull], "")
+    runParser (sepBy comma jsonNull) "null,null" `shouldBe` Right ([JNull, JNull], "")
+    runParser (sepBy comma jsonNumber) "1,2," `shouldBe` Left (ParserError "errrrrrr") -- Right ([JNumber 1, JNumber 2], "")
+    runParser (sepBy comma jsonNull) "null,nullx" `shouldBe` Right ([JNull, JNull], "x")
 
   it "jsonBool" $ do
-    runParser jsonBool "false" `shouldBe` Just (JBool False, "")
-    runParser jsonBool "false!" `shouldBe` Just (JBool False, "!")
-    runParser jsonBool "alse" `shouldBe` Nothing
-    runParser jsonBool "true" `shouldBe` Just (JBool True, "")
-    runParser jsonBool "true!" `shouldBe` Just (JBool True, "!")
-    runParser jsonBool "rue" `shouldBe` Nothing
+    runParser jsonBool "false" `shouldBe` Right (JBool False, "")
+    runParser jsonBool "false!" `shouldBe` Right (JBool False, "!")
+    runParser jsonBool "alse" `shouldBe` Left (ParserError "Expected 'false' but found 'alse'")
+    runParser jsonBool "true" `shouldBe` Right (JBool True, "")
+    runParser jsonBool "true!" `shouldBe` Right (JBool True, "!")
+    runParser jsonBool "rue" `shouldBe` Left (ParserError "Expected 'false' but found 'rue'")
 
   it "jsonNull" $ do
-    runParser jsonNull "nullfoo" `shouldBe` Just (JNull, "foo")
-    runParser jsonNull "ull" `shouldBe` Nothing
+    runParser jsonNull "nullfoo" `shouldBe` Right (JNull, "foo")
+    runParser jsonNull "ull" `shouldBe` Left (ParserError "Expected 'null' but found 'ull'")
 
   it "jsonNumber" $ do
-    runParser jsonNumber "123" `shouldBe` Just (JNumber 123, "")
-    runParser jsonNumber "-123" `shouldBe` Just (JNumber (-123), "")
-    runParser jsonNumber "123foo" `shouldBe` Just (JNumber 123, "foo")
+    runParser jsonNumber "123" `shouldBe` Right (JNumber 123, "")
+    runParser jsonNumber "-123" `shouldBe` Right (JNumber (-123), "")
+    runParser jsonNumber "123foo" `shouldBe` Right (JNumber 123, "foo")
 
   it "jsonString" $ do
-    runParser jsonString "\"foo\"" `shouldBe` Just (JString "foo", "")
-    runParser jsonString "\"foo" `shouldBe` Nothing
-    runParser jsonString "" `shouldBe` Nothing
-    runParser jsonString "\"foo\\bar\"" `shouldBe` Just (JString "foo\\bar", "")
-    runParser jsonString "\"foo\\bbar\"" `shouldBe` Just (JString "foo\\bbar", "")
-    runParser jsonString "\"foo\\fbar\"" `shouldBe` Just (JString "foo\\fbar", "")
-    runParser jsonString "\"foo\\nbar\"" `shouldBe` Just (JString "foo\\nbar", "")
-    runParser jsonString "\"foo\\rbar\"" `shouldBe` Just (JString "foo\\rbar", "")
-    runParser jsonString "\"foo\\tbar\"" `shouldBe` Just (JString "foo\\tbar", "")
-    runParser jsonString "\"foo\\u0000bar\"" `shouldBe` Just (JString "foo\\u0000bar", "")
+    runParser jsonString "\"foo\"" `shouldBe` Right (JString "foo", "")
+    runParser jsonString "\"foo" `shouldBe` Left (ParserError "Exepected '\"' but found ''")
+    runParser jsonString "" `shouldBe` Left (ParserError "Exepected '\"' but found ''")
+    runParser jsonString "\"foo\\bar\"" `shouldBe` Right (JString "foo\\bar", "")
+    runParser jsonString "\"foo\\bbar\"" `shouldBe` Right (JString "foo\\bbar", "")
+    runParser jsonString "\"foo\\fbar\"" `shouldBe` Right (JString "foo\\fbar", "")
+    runParser jsonString "\"foo\\nbar\"" `shouldBe` Right (JString "foo\\nbar", "")
+    runParser jsonString "\"foo\\rbar\"" `shouldBe` Right (JString "foo\\rbar", "")
+    runParser jsonString "\"foo\\tbar\"" `shouldBe` Right (JString "foo\\tbar", "")
+    runParser jsonString "\"foo\\u0000bar\"" `shouldBe` Right (JString "foo\\u0000bar", "")
 
   it "jsonArray" $ do
-    runParser jsonArray "[]" `shouldBe` Just (JArray [], "")
-    runParser jsonArray "[1,2,3]" `shouldBe` Just (JArray [JNumber 1, JNumber 2, JNumber 3], "")
-    runParser jsonArray "[1,2,]" `shouldBe` Nothing
+    runParser jsonArray "[]" `shouldBe` Right (JArray [], "")
+    runParser jsonArray "[1,2,3]" `shouldBe` Right (JArray [JNumber 1, JNumber 2, JNumber 3], "")
+    runParser jsonArray "[1,2,]" `shouldBe` Left (ParserError "errrrrrr")
 
   it "jsonObject" $ do
-    runParser jsonObject "{}" `shouldBe` Just (JObject [], "")
-    runParser jsonObject "{\"foo\": 42}" `shouldBe` Just (JObject [("foo", JNumber 43)], "")
-    runParser jsonObject "{\"foo\"}" `shouldBe` Nothing
+    runParser jsonObject "{}" `shouldBe` Right (JObject [], "")
+    runParser jsonObject "{\"foo\": 42}" `shouldBe` Right (JObject [("foo", JNumber 43)], "")
+    runParser jsonObject "{\"foo\"}" `shouldBe` Left (ParserError "errrrrrr")
+

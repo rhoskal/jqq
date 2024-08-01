@@ -10,23 +10,37 @@ import Data.Word8 qualified as W
 -- | Combinators
 char :: Word8 -> Parser Word8
 char w = Parser $ \input ->
-  let (bs, rest) = B.splitAt 1 input
-   in if bs == B.singleton w
+  let (slice, rest) = B.splitAt 1 input
+   in if slice == B.singleton w
         then pure (w, rest)
-        else empty
+        else
+          Left $
+            ParserError
+              ( "Exepected "
+                  <> mconcat ["'", B.singleton w, "'"]
+                  <> " but found "
+                  <> mconcat ["'", slice, "'"]
+              )
 
 string :: B.ByteString -> Parser B.ByteString
 string bs = Parser $ \input ->
-  let (matched, rest) = B.splitAt (B.length bs) input
-   in if matched == bs
-        then pure (matched, rest)
-        else empty
+  let (slice, rest) = B.splitAt (B.length bs) input
+   in if slice == bs
+        then pure (slice, rest)
+        else
+          Left $
+            ParserError
+              ( "Expected "
+                  <> mconcat ["'", bs, "'"]
+                  <> " but found "
+                  <> mconcat ["'", slice, "'"]
+              )
 
 many1 :: (Word8 -> Bool) -> Parser B.ByteString
 many1 predicate = Parser $ \input ->
   let (matched, rest) = B.span predicate input
    in if B.null matched
-        then empty
+        then Left (ParserError "Failed to match at least 1")
         else pure (matched, rest)
 
 manyTill :: (Word8 -> Bool) -> Parser B.ByteString
@@ -41,8 +55,8 @@ skipMany predicate = Parser $ \input ->
 optionMaybe :: Parser a -> Parser (Maybe a)
 optionMaybe (Parser p) = Parser $ \input ->
   case p input of
-    Just (matched, rest) -> pure (Just matched, rest)
-    Nothing -> pure (Nothing, input)
+    Left _ -> pure (Nothing, input)
+    Right (matched, rest) -> pure (Just matched, rest)
 
 sepBy :: Parser a -> Parser b -> Parser [b]
 sepBy sep element = (:) <$> element <*> many (sep *> element) <|> pure []
@@ -78,7 +92,7 @@ data JsonValue
   deriving (Eq, Show)
 
 jsonObject :: Parser JsonValue
-jsonObject = JObject <$> (braceL *> ws *> pairs <* ws <* braceR)
+jsonObject = JObject <$> (braceL *> pairs <* braceR)
   where
     pairs :: Parser [(B.ByteString, JsonValue)]
     pairs = sepBy (ws *> comma <* ws) pair
@@ -87,7 +101,7 @@ jsonObject = JObject <$> (braceL *> ws *> pairs <* ws <* braceR)
     pair = liftA2 (,) (stringLiteral <* ws <* colon <* ws) jsonValue
 
 jsonArray :: Parser JsonValue
-jsonArray = JArray <$> (bracketL *> ws *> elements <* ws <* bracketR)
+jsonArray = JArray <$> (bracketL *> elements <* bracketR)
   where
     elements :: Parser [JsonValue]
     elements = sepBy (ws *> comma <* ws) jsonValue
@@ -105,33 +119,49 @@ jsonNumber = Parser $ \input -> do
   (minusSign, rest) <- parseMinus input
   (digits, rest') <- parseDigits rest
   let numStr = maybe digits (`B.append` digits) minusSign
-  (num, _) <- readInteger numStr :: Maybe (Integer, B.ByteString)
-  pure (JNumber num, rest')
-
-jsonNull :: Parser JsonValue
-jsonNull = JNull <$ string "null"
+  case (readInteger numStr :: Maybe (Integer, B.ByteString)) of
+    Nothing ->
+      Left $
+        ParserError
+          ( "Failed to convert "
+              <> mconcat ["'", numStr, "'"]
+              <> " to Integer"
+          )
+    Just (num, _) -> pure (JNumber num, rest')
 
 jsonBool :: Parser JsonValue
-jsonBool = jsonTrue <|> jsonFalse
+jsonBool = (jsonTrue <|> jsonFalse) <?> "Expected either 'true' or 'false'"
   where
     jsonTrue = JBool True <$ string "true"
     jsonFalse = JBool False <$ string "false"
 
+jsonNull :: Parser JsonValue
+jsonNull = JNull <$ string "null"
+
 jsonValue :: Parser JsonValue
 jsonValue =
-  jsonBool
-    <|> jsonNull
+  jsonNull
+    <|> jsonBool
     <|> jsonNumber
     <|> jsonString
     <|> jsonArray
     <|> jsonObject
 
-parse :: B.ByteString -> Maybe JsonValue
+parse :: B.ByteString -> Either ParserError JsonValue
 parse input = fst <$> runParser jsonValue input
+
+(<?>) :: Parser a -> B.ByteString -> Parser a
+(Parser p) <?> errMsg = Parser $ \input ->
+  case p input of
+    Left _ -> Left $ ParserError errMsg
+    Right result -> Right result
+
+newtype ParserError = ParserError B.ByteString
+  deriving (Eq, Show)
 
 -- | Custom Parser type
 newtype Parser a = Parser
-  { runParser :: B.ByteString -> Maybe (a, B.ByteString)
+  { runParser :: B.ByteString -> Either ParserError (a, B.ByteString)
   }
 
 instance Functor Parser where
@@ -141,45 +171,27 @@ instance Functor Parser where
 
 instance Applicative Parser where
   pure :: a -> Parser a
-  pure a = Parser $ \_ -> Just (a, B.empty)
+  pure a = Parser $ \_ -> Right (a, B.empty)
 
   (<*>) :: Parser (a -> b) -> Parser a -> Parser b
-  (Parser pf) <*> (Parser p) =
+  (Parser p1) <*> (Parser p2) =
     Parser $ \input -> do
-      (fn, rest) <- pf input
-      (matched, rest') <- p rest
+      (fn, rest) <- p1 input
+      (matched, rest') <- p2 rest
       pure (fn matched, rest')
 
-  (*>) :: Parser a -> Parser b -> Parser b
-  (Parser p1) *> (Parser p2) =
-    Parser $ \input -> do
-      (_, rest) <- p1 input
-      p2 rest
+instance Alternative (Either ParserError) where
+  empty :: Either ParserError a
+  empty = Left $ ParserError "empty"
 
-  (<*) :: Parser a -> Parser b -> Parser a
-  (Parser p1) <* (Parser p2) =
-    Parser $ \input -> do
-      (matched, rest) <- p1 input
-      (_, rest') <- p2 rest
-      pure (matched, rest')
+  (<|>) :: Either ParserError a -> Either ParserError a -> Either ParserError a
+  Left _ <|> e2 = e2
+  e1 <|> _ = e1
 
 instance Alternative Parser where
   empty :: Parser a
-  empty = Parser $ const Nothing
+  empty = Parser $ const empty
 
   (<|>) :: Parser a -> Parser a -> Parser a
   (Parser p1) <|> (Parser p2) =
-    Parser $ \input ->
-      case p1 input of
-        Just result -> pure result
-        Nothing -> p2 input
-
-instance Monad Parser where
-  (>>=) :: Parser a -> (a -> Parser b) -> Parser b
-  (Parser p1) >>= fn = Parser $ \input -> do
-    (matched, rest) <- p1 input
-    let Parser p2 = fn matched
-    p2 rest
-
-  return :: a -> Parser a
-  return = pure
+    Parser $ \input -> p1 input <|> p2 input

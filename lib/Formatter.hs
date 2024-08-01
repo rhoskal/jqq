@@ -12,7 +12,7 @@ format (JString bs) = bs
 format (JNumber num) = BC.pack $ show num
 format (JArray arr) =
   "[ "
-    <> (B.intercalate ", " $ map format arr)
+    <> B.intercalate ", " (map format arr)
     <> " ]"
 format (JObject pairs) =
   "{\n"
