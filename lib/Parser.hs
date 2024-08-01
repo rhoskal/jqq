@@ -1,11 +1,6 @@
 module Parser where
 
-import Control.Applicative
-  ( Alternative,
-    empty,
-    many,
-    (<|>),
-  )
+import Control.Applicative (Alternative (..), (<|>))
 import Control.Monad ((>=>))
 import Data.ByteString qualified as B
 import Data.ByteString.Char8 (readInteger)
@@ -62,28 +57,14 @@ isSpace w =
 ws :: Parser B.ByteString
 ws = skipMany isSpace
 
-comma :: Parser Word8
+comma, bracketL, bracketR, braceL, braceR, quoteDouble, hyphen, colon :: Parser Word8
 comma = char W._comma
-
-bracketL :: Parser Word8
 bracketL = char W._bracketleft
-
-bracketR :: Parser Word8
 bracketR = char W._bracketright
-
-braceL :: Parser Word8
 braceL = char W._braceleft
-
-braceR :: Parser Word8
 braceR = char W._braceright
-
-quoteDouble :: Parser Word8
 quoteDouble = char W._quotedbl
-
-hyphen :: Parser Word8
 hyphen = char W._hyphen
-
-colon :: Parser Word8
 colon = char W._colon
 
 -- | Parsers
@@ -164,30 +145,23 @@ instance Applicative Parser where
 
   (<*>) :: Parser (a -> b) -> Parser a -> Parser b
   (Parser pf) <*> (Parser p) =
-    Parser $ \input ->
-      case pf input of
-        Just (fn, rest) ->
-          case p rest of
-            Just (matched, rest') -> pure (fn matched, rest')
-            Nothing -> empty
-        Nothing -> empty
+    Parser $ \input -> do
+      (fn, rest) <- pf input
+      (matched, rest') <- p rest
+      pure (fn matched, rest')
 
   (*>) :: Parser a -> Parser b -> Parser b
   (Parser p1) *> (Parser p2) =
-    Parser $ \input ->
-      case p1 input of
-        Just (_, rest) -> p2 rest
-        Nothing -> empty
+    Parser $ \input -> do
+      (_, rest) <- p1 input
+      p2 rest
 
   (<*) :: Parser a -> Parser b -> Parser a
   (Parser p1) <* (Parser p2) =
-    Parser $ \input ->
-      case p1 input of
-        Just (matched, rest) ->
-          case p2 rest of
-            Nothing -> empty
-            Just (_, rest') -> pure (matched, rest')
-        Nothing -> empty
+    Parser $ \input -> do
+      (matched, rest) <- p1 input
+      (_, rest') <- p2 rest
+      pure (matched, rest')
 
 instance Alternative Parser where
   empty :: Parser a
@@ -202,12 +176,10 @@ instance Alternative Parser where
 
 instance Monad Parser where
   (>>=) :: Parser a -> (a -> Parser b) -> Parser b
-  (Parser p1) >>= fn = Parser $ \input ->
-    case p1 input of
-      Just (matched, rest) ->
-        let Parser p2 = fn matched
-         in p2 rest
-      Nothing -> empty
+  (Parser p1) >>= fn = Parser $ \input -> do
+    (matched, rest) <- p1 input
+    let Parser p2 = fn matched
+    p2 rest
 
   return :: a -> Parser a
   return = pure
