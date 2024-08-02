@@ -58,8 +58,8 @@ parserSpec = do
     runParser (sepBy jsonNull comma) "" `shouldBe` Right ([], "")
     runParser (sepBy jsonNull comma) "null" `shouldBe` Right ([JNull], "")
     runParser (sepBy jsonNull comma) "null,null" `shouldBe` Right ([JNull, JNull], "")
-  -- runParser (sepBy jsonNumber comma) "1,2," `shouldBe` Left (ParserError "errrrrrr") -- Right ([JNumber 1, JNumber 2], "")
-  -- runParser (sepBy comma jsonNull) "null,nullx" `shouldBe` Right ([JNull, JNull], "x")
+    runParser (sepBy jsonNumber comma) "1,2," `shouldBe` Left (ParserError "this should fail") -- Right ([JNumber 1, JNumber 2], "")
+    runParser (sepBy jsonNull comma) "null,nullx" `shouldBe` Left (ParserError "this should fail") -- Right ([JNull, JNull], "")
 
   it "sepBy1" $ do
     runParser (sepBy1 jsonNumber (ws *> comma <* ws)) "1,2, 3" `shouldBe` Right ([JNumber 1, JNumber 2, JNumber 3], "")

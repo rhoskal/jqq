@@ -116,7 +116,8 @@ executable jqq
     build-depends:
         base ^>=4.18.2.1,
         jqq,
-        bytestring
+        bytestring,
+        optparse-applicative
 
     -- Directories containing source files.
     hs-source-dirs:   app

@@ -150,8 +150,8 @@ jsonValue =
     <|> jsonArray
     <|> jsonObject
 
-parse :: B.ByteString -> Either ParserError JsonValue
-parse input = fst <$> runParser jsonValue input
+parseJson :: B.ByteString -> Either ParserError JsonValue
+parseJson input = fst <$> runParser jsonValue input
 
 (<?>) :: Parser a -> B.ByteString -> Parser a
 (Parser p) <?> errMsg = Parser $ \input ->
