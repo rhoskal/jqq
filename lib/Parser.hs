@@ -88,10 +88,15 @@ colon = char W._colon
 data JsonValue
   = JBool !Bool
   | JNull
-  | JNumber !Integer
+  | JNumber JNum
   | JString !B.ByteString
   | JArray ![JsonValue]
   | JObject ![(B.ByteString, JsonValue)]
+  deriving (Eq, Show)
+
+data JNum
+  = JInt !Integer
+  | JFloat !Double
   deriving (Eq, Show)
 
 jsonObject :: Parser JsonValue
@@ -130,7 +135,7 @@ jsonNumber = Parser $ \input -> do
               <> mconcat ["'", numStr, "'"]
               <> " to Integer"
           )
-    Just (num, _) -> pure (JNumber num, rest')
+    Just (num, _) -> pure (JNumber $ JInt num, rest')
 
 jsonBool :: Parser JsonValue
 jsonBool = (jsonTrue <|> jsonFalse) <?> "Expected either 'true' or 'false'"

@@ -60,10 +60,9 @@ parserSpec = do
     runParser (sepBy jsonNull comma) "null,null" `shouldBe` Right ([JNull, JNull], "")
     runParser (sepBy jsonNumber comma) "1,2," `shouldBe` Left (ParserError "this should fail") -- Right ([JNumber 1, JNumber 2], "")
     runParser (sepBy jsonNull comma) "null,nullx" `shouldBe` Left (ParserError "this should fail") -- Right ([JNull, JNull], "")
-
   it "sepBy1" $ do
-    runParser (sepBy1 jsonNumber (ws *> comma <* ws)) "1,2, 3" `shouldBe` Right ([JNumber 1, JNumber 2, JNumber 3], "")
-    runParser (sepBy1 jsonNumber (ws *> comma <* ws)) "1" `shouldBe` Right ([JNumber 1], "")
+    runParser (sepBy1 jsonNumber (ws *> comma <* ws)) "1,2, 3" `shouldBe` Right ([JNumber (JInt 1), JNumber (JInt 2), JNumber (JInt 3)], "")
+    runParser (sepBy1 jsonNumber (ws *> comma <* ws)) "1" `shouldBe` Right ([JNumber (JInt 1)], "")
     runParser (sepBy1 jsonNumber (ws *> comma <* ws)) "" `shouldBe` Left (ParserError "Failed to match at least 1")
 
   it "jsonBool" $ do
@@ -79,9 +78,9 @@ parserSpec = do
     runParser jsonNull "ull" `shouldBe` Left (ParserError "Expected 'null' but found 'ull'")
 
   it "jsonNumber" $ do
-    runParser jsonNumber "123" `shouldBe` Right (JNumber 123, "")
-    runParser jsonNumber "-123" `shouldBe` Right (JNumber (-123), "")
-    runParser jsonNumber "123foo" `shouldBe` Right (JNumber 123, "foo")
+    runParser jsonNumber "123" `shouldBe` Right (JNumber (JInt 123), "")
+    runParser jsonNumber "-123" `shouldBe` Right (JNumber (JInt (-123)), "")
+    runParser jsonNumber "123foo" `shouldBe` Right (JNumber (JInt 123), "foo")
 
   it "jsonString" $ do
     runParser jsonString "\"foo\"" `shouldBe` Right (JString "foo", "")
@@ -97,10 +96,10 @@ parserSpec = do
 
   xit "jsonArray" $ do
     runParser jsonArray "[]" `shouldBe` Right (JArray [], "")
-    runParser jsonArray "[1,2,3]" `shouldBe` Right (JArray [JNumber 1, JNumber 2, JNumber 3], "")
+    runParser jsonArray "[1,2,3]" `shouldBe` Right (JArray [JNumber (JInt 1), JNumber (JInt 2), JNumber (JInt 3)], "")
     runParser jsonArray "[1,2,]" `shouldBe` Left (ParserError "errrrrrr")
 
   xit "jsonObject" $ do
     runParser jsonObject "{}" `shouldBe` Right (JObject [], "")
-    runParser jsonObject "{\"foo\": 42}" `shouldBe` Right (JObject [("foo", JNumber 43)], "")
+    runParser jsonObject "{\"foo\": 42}" `shouldBe` Right (JObject [("foo", JNumber (JInt 43))], "")
     runParser jsonObject "{\"foo\"}" `shouldBe` Left (ParserError "errrrrrr")
