@@ -42,13 +42,13 @@ parserSpec = do
     runParser quoteDouble "\"" `shouldBe` Right (W._quotedbl, "")
     runParser quoteDouble "" `shouldBe` Left (ParserError "Exepected '\"' but found ''")
 
-  it "hyphen" $ do
-    runParser hyphen "-123" `shouldBe` Right (W._hyphen, "123")
-    runParser hyphen "123" `shouldBe` Left (ParserError "Exepected '-' but found '1'")
-
   it "optionMaybe" $ do
-    runParser (optionMaybe hyphen) "-42" `shouldBe` Right (Just W._hyphen, "42")
-    runParser (optionMaybe hyphen) "42" `shouldBe` Right (Nothing, "42")
+    runParser (optionMaybe minus) "-42" `shouldBe` Right (Just W._hyphen, "42")
+    runParser (optionMaybe minus) "42" `shouldBe` Right (Nothing, "42")
+
+  it "minus" $ do
+    runParser minus "-123" `shouldBe` Right (W._hyphen, "123")
+    runParser minus "123" `shouldBe` Left (ParserError "Exepected '-' but found '1'")
 
   it "many1" $ do
     runParser (many1 isSpace) "" `shouldBe` Left (ParserError "Failed to match at least 1")
@@ -58,8 +58,9 @@ parserSpec = do
     runParser (sepBy jsonNull comma) "" `shouldBe` Right ([], "")
     runParser (sepBy jsonNull comma) "null" `shouldBe` Right ([JNull], "")
     runParser (sepBy jsonNull comma) "null,null" `shouldBe` Right ([JNull, JNull], "")
-    runParser (sepBy jsonNumber comma) "1,2," `shouldBe` Left (ParserError "this should fail") -- Right ([JNumber 1, JNumber 2], "")
-    runParser (sepBy jsonNull comma) "null,nullx" `shouldBe` Left (ParserError "this should fail") -- Right ([JNull, JNull], "")
+    runParser (sepBy jsonNumber comma) "1,2," `shouldBe` Left (ParserError "this should fail")
+    runParser (sepBy jsonNull comma) "null,nullx" `shouldBe` Left (ParserError "this should fail")
+
   it "sepBy1" $ do
     runParser (sepBy1 jsonNumber (ws *> comma <* ws)) "1,2, 3" `shouldBe` Right ([JNumber (JInt 1), JNumber (JInt 2), JNumber (JInt 3)], "")
     runParser (sepBy1 jsonNumber (ws *> comma <* ws)) "1" `shouldBe` Right ([JNumber (JInt 1)], "")

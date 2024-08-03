@@ -74,14 +74,14 @@ isSpace w =
 ws :: Parser B.ByteString
 ws = skipMany isSpace
 
-comma, bracketL, bracketR, braceL, braceR, quoteDouble, hyphen, colon :: Parser Word8
+comma, bracketL, bracketR, braceL, braceR, quoteDouble, minus, colon :: Parser Word8
 comma = char W._comma
 bracketL = char W._bracketleft
 bracketR = char W._bracketright
 braceL = char W._braceleft
 braceR = char W._braceright
 quoteDouble = char W._quotedbl
-hyphen = char W._hyphen
+minus = char W._hyphen
 colon = char W._colon
 
 -- | Parsers
@@ -122,16 +122,16 @@ stringLiteral = quoteDouble *> manyTill (/= W._quotedbl) <* quoteDouble
 
 jsonNumber :: Parser JsonValue
 jsonNumber = Parser $ \input -> do
-  let Parser parseMinus = optionMaybe (B.singleton <$> hyphen)
+  let Parser parseMinus = optionMaybe (B.singleton <$> minus)
   let Parser parseDigits = many1 W.isDigit
-  (minusSign, rest) <- parseMinus input
+  (maybeMinus, rest) <- parseMinus input
   (digits, rest') <- parseDigits rest
-  let numStr = maybe digits (`B.append` digits) minusSign
+  let numStr = maybe digits (`B.append` digits) maybeMinus
   case (readInteger numStr :: Maybe (Integer, B.ByteString)) of
     Nothing ->
       Left $
         ParserError
-          ( "Failed to convert "
+          ( "Failed to coerce "
               <> mconcat ["'", numStr, "'"]
               <> " to Integer"
           )
@@ -203,3 +203,13 @@ instance Alternative Parser where
   (<|>) :: Parser a -> Parser a -> Parser a
   (Parser p1) <|> (Parser p2) =
     Parser $ \input -> p1 input <|> p2 input
+
+instance Monad Parser where
+  (>>=) :: Parser a -> (a -> Parser b) -> Parser b
+  (Parser p1) >>= fn = Parser $ \input -> do
+    (matched, rest) <- p1 input
+    let Parser p2 = fn matched
+    p2 rest
+
+  return :: a -> Parser a
+  return = pure
