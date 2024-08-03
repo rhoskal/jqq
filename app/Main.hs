@@ -13,7 +13,8 @@ data Options = Options
   deriving (Eq, Show)
 
 appOptions :: Parser Options
-appOptions = Options <$> spacingOpt <*> inputOpt
+appOptions =
+  Options <$> spacingOpt <*> inputOpt
 
 spacingOpt :: Parser Int
 spacingOpt =
