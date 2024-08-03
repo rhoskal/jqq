@@ -89,7 +89,8 @@ sepBy p sep =
   sepBy1 p sep <|> pure []
 
 sepBy1 :: Parser a -> Parser sep -> Parser [a]
-sepBy1 p sep = (:) <$> p <*> many (sep *> p)
+sepBy1 p sep =
+  (:) <$> p <*> many (sep *> p)
 
 ws :: Parser ()
 ws =
@@ -100,6 +101,9 @@ ws =
           || w == W._cr
           || w == W._tab
    in skipMany isSpace
+
+lexeme :: Parser a -> Parser a
+lexeme p = ws *> p <* ws
 
 comma, bracketL, bracketR, braceL, braceR, quoteDouble, minus, colon :: Parser Word8
 comma = char W._comma
@@ -185,12 +189,14 @@ jsonNull =
 
 jsonValue :: Parser JsonValue
 jsonValue =
-  jsonNull
-    <|> jsonBool
-    <|> jsonNumber
-    <|> jsonString
-    <|> jsonArray
-    <|> jsonObject
+  lexeme
+    ( jsonNull
+        <|> jsonBool
+        <|> jsonNumber
+        <|> jsonString
+        <|> jsonArray
+        <|> jsonObject
+    )
 
 parseJson :: B.ByteString -> Either ParserError JsonValue
 parseJson input =
@@ -219,7 +225,7 @@ instance Functor Parser where
 instance Applicative Parser where
   pure :: a -> Parser a
   pure a =
-    Parser $ const $ Right (a, B.empty)
+    Parser $ \input -> Right (a, input)
 
   (<*>) :: Parser (a -> b) -> Parser a -> Parser b
   (Parser p1) <*> (Parser p2) =
