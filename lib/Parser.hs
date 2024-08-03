@@ -7,7 +7,7 @@ import Data.ByteString.Char8 (readInteger)
 import Data.Word (Word8)
 import Data.Word8 qualified as W
 
--- | Combinators
+-- | Char Parsers
 char :: Word8 -> Parser Word8
 char w = Parser $ \input ->
   let (slice, rest) = B.splitAt 1 input
@@ -36,6 +36,24 @@ string bs = Parser $ \input ->
                   <> mconcat ["'", slice, "'"]
               )
 
+satisfy :: (Word8 -> Bool) -> Parser Word8
+satisfy predicate = Parser $ \input ->
+  case B.uncons input of
+    Nothing -> Left (ParserError "Unable to match on empty string")
+    Just (w, rest) ->
+      if predicate w
+        then pure (w, rest)
+        else
+          Left $
+            ParserError
+              ( "Predicate failed with: "
+                  <> mconcat ["'", B.singleton w, "'"]
+              )
+
+digit :: Parser Word8
+digit = satisfy W.isDigit
+
+-- | Combinators
 many1 :: (Word8 -> Bool) -> Parser B.ByteString
 many1 predicate = Parser $ \input ->
   let (matched, rest) = B.span predicate input
@@ -64,15 +82,15 @@ sepBy p sep = sepBy1 p sep <|> pure []
 sepBy1 :: Parser a -> Parser sep -> Parser [a]
 sepBy1 p sep = (:) <$> p <*> many (sep *> p)
 
-isSpace :: Word8 -> Bool
-isSpace w =
-  w == W._space
-    || w == W._lf
-    || w == W._cr
-    || w == W._tab
-
 ws :: Parser B.ByteString
 ws = skipMany isSpace
+  where
+    isSpace :: Word8 -> Bool
+    isSpace w =
+      w == W._space
+        || w == W._lf
+        || w == W._cr
+        || w == W._tab
 
 comma, bracketL, bracketR, braceL, braceR, quoteDouble, minus, colon :: Parser Word8
 comma = char W._comma
@@ -83,6 +101,9 @@ braceR = char W._braceright
 quoteDouble = char W._quotedbl
 minus = char W._hyphen
 colon = char W._colon
+
+digits :: Parser B.ByteString
+digits = many1 W.isDigit
 
 -- | Parsers
 data JsonValue
@@ -123,10 +144,10 @@ stringLiteral = quoteDouble *> manyTill (/= W._quotedbl) <* quoteDouble
 jsonNumber :: Parser JsonValue
 jsonNumber = Parser $ \input -> do
   let Parser parseMinus = optionMaybe (B.singleton <$> minus)
-  let Parser parseDigits = many1 W.isDigit
+  let Parser parseDigits = digits
   (maybeMinus, rest) <- parseMinus input
-  (digits, rest') <- parseDigits rest
-  let numStr = maybe digits (`B.append` digits) maybeMinus
+  (ds, rest') <- parseDigits rest
+  let numStr = maybe ds (`B.append` ds) maybeMinus
   case (readInteger numStr :: Maybe (Integer, B.ByteString)) of
     Nothing ->
       Left $

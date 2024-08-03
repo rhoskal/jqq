@@ -10,6 +10,14 @@ parserSpec = do
     runParser (char W._colon) "foobar" `shouldBe` Left (ParserError "Exepected ':' but found 'f'")
     runParser (char W._colon) ":foobar" `shouldBe` Right (W._colon, "foobar")
 
+  it "string" $ do
+    runParser (string "foo") "bar" `shouldBe` Left (ParserError "Expected 'foo' but found 'bar'")
+    runParser (string "foo") "foobar" `shouldBe` Right ("foo", "bar")
+
+  it "satisfy" $ do
+    runParser (satisfy (== W._e)) "a" `shouldBe` Left (ParserError "Predicate failed with: 'a'")
+    runParser (satisfy (== W._e)) "e" `shouldBe` Right (101, "")
+
   it "whitespace [single]" $ do
     runParser ws " foobar" `shouldBe` Right ("", "foobar")
     runParser ws "\nfoobar" `shouldBe` Right ("", "foobar")
@@ -51,8 +59,8 @@ parserSpec = do
     runParser minus "123" `shouldBe` Left (ParserError "Exepected '-' but found '1'")
 
   it "many1" $ do
-    runParser (many1 isSpace) "" `shouldBe` Left (ParserError "Failed to match at least 1")
-    runParser (many1 isSpace) "  " `shouldBe` Right ("  ", "")
+    runParser (many1 W.isDigit) "" `shouldBe` Left (ParserError "Failed to match at least 1")
+    runParser (many1 W.isDigit) "42a" `shouldBe` Right ("42", "a")
 
   it "sepBy" $ do
     runParser (sepBy jsonNull comma) "" `shouldBe` Right ([], "")
