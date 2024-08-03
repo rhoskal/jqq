@@ -136,13 +136,13 @@ jsonObject =
 
       pair :: Parser (B.ByteString, JsonValue)
       pair = liftA2 (,) (stringLiteral <* ws <* colon <* ws) jsonValue
-   in JObject <$> (braceL *> pairs <* braceR)
+   in JObject <$> (braceL *> ws *> pairs <* ws <* braceR)
 
 jsonArray :: Parser JsonValue
 jsonArray =
   let elements :: Parser [JsonValue]
       elements = sepBy jsonValue (ws *> comma <* ws)
-   in JArray <$> (bracketL *> elements <* bracketR)
+   in JArray <$> (bracketL *> ws *> elements <* ws <* bracketR)
 
 jsonString :: Parser JsonValue
 jsonString =
