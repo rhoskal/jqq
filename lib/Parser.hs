@@ -65,10 +65,10 @@ manyTill :: (Word8 -> Bool) -> Parser B.ByteString
 manyTill predicate = Parser $ \input ->
   pure $ B.span predicate input
 
-skipMany :: (Word8 -> Bool) -> Parser B.ByteString
+skipMany :: (Word8 -> Bool) -> Parser ()
 skipMany predicate = Parser $ \input ->
   let rest = B.dropWhile predicate input
-   in pure (B.empty, rest)
+   in pure ((), rest)
 
 optionMaybe :: Parser a -> Parser (Maybe a)
 optionMaybe (Parser p) = Parser $ \input ->
@@ -82,7 +82,7 @@ sepBy p sep = sepBy1 p sep <|> pure []
 sepBy1 :: Parser a -> Parser sep -> Parser [a]
 sepBy1 p sep = (:) <$> p <*> many (sep *> p)
 
-ws :: Parser B.ByteString
+ws :: Parser ()
 ws = skipMany isSpace
   where
     isSpace :: Word8 -> Bool
@@ -200,7 +200,7 @@ instance Functor Parser where
 
 instance Applicative Parser where
   pure :: a -> Parser a
-  pure a = Parser $ \_ -> Right (a, B.empty)
+  pure a = Parser $ const $ Right (a, B.empty)
 
   (<*>) :: Parser (a -> b) -> Parser a -> Parser b
   (Parser p1) <*> (Parser p2) =

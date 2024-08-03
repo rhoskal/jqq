@@ -19,16 +19,16 @@ parserSpec = do
     runParser (satisfy (== W._e)) "e" `shouldBe` Right (101, "")
 
   it "whitespace [single]" $ do
-    runParser ws " foobar" `shouldBe` Right ("", "foobar")
-    runParser ws "\nfoobar" `shouldBe` Right ("", "foobar")
-    runParser ws "\rfoobar" `shouldBe` Right ("", "foobar")
-    runParser ws "\tfoobar" `shouldBe` Right ("", "foobar")
+    runParser ws " foobar" `shouldBe` Right ((), "foobar")
+    runParser ws "\nfoobar" `shouldBe` Right ((), "foobar")
+    runParser ws "\rfoobar" `shouldBe` Right ((), "foobar")
+    runParser ws "\tfoobar" `shouldBe` Right ((), "foobar")
 
   it "whitespace [multiple]" $ do
-    runParser ws " \nfoobar" `shouldBe` Right ("", "foobar")
-    runParser ws "\n\rfoobar" `shouldBe` Right ("", "foobar")
-    runParser ws "\r\tfoobar" `shouldBe` Right ("", "foobar")
-    runParser ws "\t foobar" `shouldBe` Right ("", "foobar")
+    runParser ws " \nfoobar" `shouldBe` Right ((), "foobar")
+    runParser ws "\n\rfoobar" `shouldBe` Right ((), "foobar")
+    runParser ws "\r\tfoobar" `shouldBe` Right ((), "foobar")
+    runParser ws "\t foobar" `shouldBe` Right ((), "foobar")
 
   it "comma" $ do
     runParser comma ",foobar" `shouldBe` Right (W._comma, "foobar")
