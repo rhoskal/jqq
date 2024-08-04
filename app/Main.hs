@@ -1,15 +1,19 @@
 module Main where
 
 import Data.ByteString qualified as B
-import Data.ByteString.Char8 qualified as BC
 import Formatter
 import Options.Applicative
 import Parser (ParserError (..), parseJson)
 
 data Options = Options
   { optSpacing :: !Int,
-    optInput :: !B.ByteString
+    optInput :: InputMode
   }
+  deriving (Eq, Show)
+
+data InputMode
+  = FileInput !FilePath
+  | StdIn
   deriving (Eq, Show)
 
 appOptions :: Parser Options
@@ -27,20 +31,35 @@ spacingOpt =
         <> metavar "INT"
     )
 
-inputOpt :: Parser B.ByteString
+inputOpt :: Parser InputMode
 inputOpt =
-  BC.pack
-    <$> strOption
-      ( long "input"
-          <> short 'i'
-          <> help "JSON string"
-          <> metavar "JSON"
-      )
+  let fileInput :: Parser InputMode
+      fileInput =
+        FileInput
+          <$> strOption
+            ( long "file"
+                <> short 'f'
+                <> metavar "FILE_PATH"
+                <> help "Path to JSON file"
+            )
+
+      stdIn :: Parser InputMode
+      stdIn =
+        flag'
+          StdIn
+          ( long "stdin"
+              <> help "Read JSON from stdin"
+          )
+   in fileInput <|> stdIn
 
 main :: IO ()
 main = do
   options <- execParser opts
-  case parseJson (optInput options) of
+  bsContent <-
+    case optInput options of
+      FileInput filePath -> B.readFile filePath
+      StdIn -> B.getContents
+  case parseJson bsContent of
     Right json -> B.putStr $ format json
     Left (ParserError err) -> B.putStr err
   where
