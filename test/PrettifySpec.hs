@@ -6,28 +6,30 @@ import Test.Hspec
 
 prettifySpec :: Spec
 prettifySpec = do
+  let indentLevel :: Int = 2
+
   it "null" $ do
-    format JNull `shouldBe` "null"
+    format indentLevel JNull `shouldBe` "null"
 
   it "bool" $ do
-    format (JBool True) `shouldBe` "true"
-    format (JBool False) `shouldBe` "false"
+    format indentLevel (JBool True) `shouldBe` "true"
+    format indentLevel (JBool False) `shouldBe` "false"
 
   it "string" $ do
-    format (JString "foobar") `shouldBe` "foobar"
+    format indentLevel (JString "foobar") `shouldBe` "\"foobar\""
 
   it "number" $ do
-    format (JNumber (JInt (-42))) `shouldBe` "-42"
-    format (JNumber (JInt 42)) `shouldBe` "42"
-    format (JNumber (JFloat (-42.0))) `shouldBe` "-42.0"
-    format (JNumber (JFloat 42.0)) `shouldBe` "42.0"
+    format indentLevel (JNumber (JInt (-42))) `shouldBe` "-42"
+    format indentLevel (JNumber (JInt 42)) `shouldBe` "42"
+    format indentLevel (JNumber (JFloat (-42.0))) `shouldBe` "-42.0"
+    format indentLevel (JNumber (JFloat 42.0)) `shouldBe` "42.0"
 
   it "array" $ do
     let json = JArray [JNumber (JInt 1), JNull, JBool True, JBool False]
 
-    format json `shouldBe` "[1, null, true, false]"
+    format indentLevel json `shouldBe` "[\n  1,\n  null,\n  true,\n  false\n]"
 
   it "object" $ do
     let json = JObject [("foo", JNumber (JInt 42)), ("bar", JNull)]
 
-    format json `shouldBe` "{\"foo\": 42, \"bar\": null}"
+    format indentLevel json `shouldBe` "{\n  \"foo\": 42,\n  \"bar\": null\n}"

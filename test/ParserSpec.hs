@@ -87,9 +87,19 @@ parserSpec = do
     runParser jsonNull "ull" `shouldBe` Left (ParserError "Expected 'null' but found 'ull'")
 
   it "jsonNumber" $ do
+    runParser jsonNumber "0" `shouldBe` Right (JNumber (JInt 0), "")
+    runParser jsonNumber "01" `shouldBe` Left (ParserError "Predicate failed with: '0'")
     runParser jsonNumber "123" `shouldBe` Right (JNumber (JInt 123), "")
     runParser jsonNumber "-123" `shouldBe` Right (JNumber (JInt (-123)), "")
     runParser jsonNumber "123foo" `shouldBe` Right (JNumber (JInt 123), "foo")
+    runParser jsonNumber "0.0" `shouldBe` Right (JNumber (JFloat 0.0), "")
+    runParser jsonNumber "-0.0" `shouldBe` Right (JNumber (JFloat (-0.0)), "")
+    runParser jsonNumber "0.1e3" `shouldBe` Right (JNumber (JFloat 100.0), "")
+    runParser jsonNumber "0.1e+3" `shouldBe` Right (JNumber (JFloat 100.0), "")
+    runParser jsonNumber "0.1e-3" `shouldBe` Right (JNumber (JFloat 0.0001), "")
+    runParser jsonNumber "0.0e3" `shouldBe` Left (ParserError "bad format")
+    runParser jsonNumber "01.0" `shouldBe` Left (ParserError "bad format")
+    runParser jsonNumber "1.e" `shouldBe` Left (ParserError "bad format")
 
   it "jsonString" $ do
     runParser jsonString "\"foo\"" `shouldBe` Right (JString "foo", "")

@@ -1,0 +1,43 @@
+{
+  "result": [
+    {
+      "status": "disabled",
+      "name": {
+        "first": "Maria",
+        "middle": "Jamie",
+        "last": "Ziemann-Kuphal"
+      },
+      "username": "Maria-Ziemann-Kuphal",
+      "password": "v6Npe6ogoZPiUR4",
+      "emails": ["Jermain_Durgan@gmail.com", "Braulio_Farrell67@gmail.com"],
+      "phoneNumber": "819-372-0908 x04779",
+      "location": {
+        "street": "28208 Stroman Shoal",
+        "city": "Waelchiside",
+        "state": "Wyoming",
+        "country": "Belarus",
+        "zip": "03055-3634",
+        "coordinates": {
+          "latitude": -8.3412,
+          "longitude": -20.1796
+        }
+      },
+      "website": "https://dense-veterinarian.net/",
+      "domain": "roasted-pitching.com",
+      "job": {
+        "title": "Legacy Applications Specialist",
+        "descriptor": "Forward",
+        "area": "Intranet",
+        "type": "Supervisor",
+        "company": "Reynolds - Turner"
+      },
+      "creditCard": {
+        "number": "5492-9319-4323-6836",
+        "cvv": "228",
+        "issuer": "maestro"
+      },
+      "uuid": "58e6b1d1-4a88-4a65-b0cf-7d48769f52bf",
+      "objectId": "66aff3ef8f881530f49e8019"
+    }
+  ]
+}

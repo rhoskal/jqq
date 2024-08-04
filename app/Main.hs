@@ -15,7 +15,7 @@ main = do
       FileInput filePath -> B.readFile filePath
       StdIn -> B.getContents
   case parseJson bsContent of
-    Right json -> TIO.putStr (format (optSpacing options) json)
+    Right json -> TIO.putStrLn (format (optSpacing options) json)
     Left (ParserError err) -> B.putStr err
   where
     opts =
