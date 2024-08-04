@@ -90,6 +90,8 @@ library
     build-depends:
         base ^>=4.18.2.1,
         bytestring,
+        prettyprinter,
+        text,
         word8
 
     -- Directories containing source files.
@@ -118,7 +120,9 @@ executable jqq
         base ^>=4.18.2.1,
         jqq,
         bytestring,
-        optparse-applicative
+        optparse-applicative,
+        prettyprinter,
+        text
 
     -- Directories containing source files.
     hs-source-dirs:   app

@@ -7,7 +7,7 @@ import Test.Hspec
 prettifySpec :: Spec
 prettifySpec = do
   it "null" $ do
-    format (JNull) `shouldBe` "null"
+    format JNull `shouldBe` "null"
 
   it "bool" $ do
     format (JBool True) `shouldBe` "true"
