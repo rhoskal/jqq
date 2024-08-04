@@ -4,32 +4,51 @@ import Data.ByteString qualified as B
 import Formatter
 import Options.Applicative
 import Parser (ParserError (..), parseJson)
+import Types
 
-data Options = Options
-  { optSpacing :: !Int,
-    optInput :: InputMode
-  }
-  deriving (Eq, Show)
-
-data InputMode
-  = FileInput !FilePath
-  | StdIn
-  deriving (Eq, Show)
+main :: IO ()
+main = do
+  options <- execParser opts
+  bsContent <-
+    case optInput options of
+      FileInput filePath -> B.readFile filePath
+      StdIn -> B.getContents
+  case parseJson bsContent of
+    Right json -> B.putStr $ format json
+    Left (ParserError err) -> B.putStr err
+  where
+    opts =
+      info
+        (appOptions <**> helper)
+        ( fullDesc
+            <> progDesc "Parse and format JSON input"
+            <> header "jqq - a simple 'jq' clone"
+        )
 
 appOptions :: Parser Options
 appOptions =
-  Options <$> spacingOpt <*> inputOpt
+  Options
+    <$> spacingOpt
+    <*> inputOpt
+    <*> debugOpt
 
 spacingOpt :: Parser Int
 spacingOpt =
   option
-    auto
+    positiveInt
     ( long "spacing"
         <> help "How many spaces should we use?"
         <> showDefault
         <> value 2
         <> metavar "INT"
     )
+
+positiveInt :: ReadM Int
+positiveInt =
+  let checkPositive i
+        | i > 0 = pure i
+        | otherwise = readerError "Value must be greater than 0"
+   in auto >>= checkPositive
 
 inputOpt :: Parser InputMode
 inputOpt =
@@ -52,21 +71,10 @@ inputOpt =
           )
    in fileInput <|> stdIn
 
-main :: IO ()
-main = do
-  options <- execParser opts
-  bsContent <-
-    case optInput options of
-      FileInput filePath -> B.readFile filePath
-      StdIn -> B.getContents
-  case parseJson bsContent of
-    Right json -> B.putStr $ format json
-    Left (ParserError err) -> B.putStr err
-  where
-    opts =
-      info
-        (appOptions <**> helper)
-        ( fullDesc
-            <> progDesc "Parse and format JSON input"
-            <> header "jqq - a simple 'jq' clone"
-        )
+debugOpt :: Parser Bool
+debugOpt =
+  switch
+    ( long "debug"
+        <> short 'd'
+        <> help "show internal AST"
+    )

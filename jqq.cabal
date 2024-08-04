@@ -78,6 +78,7 @@ library
     exposed-modules:
         Formatter
         Parser
+        Types
 
     -- Modules included in this library but not exported.
     -- other-modules:

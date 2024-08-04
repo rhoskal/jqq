@@ -2,14 +2,15 @@ module Formatter (format) where
 
 import Data.ByteString qualified as B
 import Data.ByteString.Char8 qualified as BC
-import Parser (JsonValue (..))
+import Parser (JNum (..), JsonValue (..))
 
 format :: JsonValue -> B.ByteString
 format (JBool True) = "true"
 format (JBool False) = "false"
 format JNull = "null"
-format (JString bs) = bs
-format (JNumber num) = BC.pack $ show num
+format (JString str) = str
+format (JNumber (JInt num)) = BC.pack $ show num
+format (JNumber (JFloat num)) = BC.pack $ show num
 format (JArray arr) =
   "[ "
     <> B.intercalate ", " (map format arr)
