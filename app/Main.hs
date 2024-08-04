@@ -1,9 +1,9 @@
 module Main where
 
 import Data.ByteString qualified as B
-import Formatter
 import Options.Applicative
 import Parser (ParserError (..), parseJson)
+import Pretty qualified as P
 import Types
 
 main :: IO ()
@@ -14,7 +14,7 @@ main = do
       FileInput filePath -> B.readFile filePath
       StdIn -> B.getContents
   case parseJson bsContent of
-    Right json -> B.putStr $ format json
+    Right json -> B.putStr $ P.format json
     Left (ParserError err) -> B.putStr err
   where
     opts =
