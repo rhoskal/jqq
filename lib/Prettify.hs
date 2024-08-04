@@ -1,4 +1,4 @@
-module Pretty (format) where
+module Prettify (format) where
 
 import Data.ByteString qualified as B
 import Data.ByteString.Char8 qualified as BC

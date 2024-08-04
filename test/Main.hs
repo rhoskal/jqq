@@ -1,10 +1,10 @@
 module Main (main) where
 
 import ParserSpec (parserSpec)
-import PrettySpec (prettySpec)
+import PrettifySpec (prettifySpec)
 import Test.Hspec
 
 main :: IO ()
 main = hspec $ parallel $ do
   describe "Parser" parserSpec
-  describe "Pretty" prettySpec
+  describe "Prettify" prettifySpec

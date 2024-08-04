@@ -3,7 +3,7 @@ module Main where
 import Data.ByteString qualified as B
 import Options.Applicative
 import Parser (ParserError (..), parseJson)
-import Pretty qualified as P
+import Prettify qualified as P
 import Types
 
 main :: IO ()
