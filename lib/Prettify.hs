@@ -1,7 +1,6 @@
 module Prettify (format) where
 
 import Data.ByteString qualified as B
-import Data.ByteString.Char8 qualified as BC
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Parser (JNum (..), JsonValue (..))
@@ -42,7 +41,7 @@ jsonValueToDoc indentLevel value =
               <+> jsonValueToDoc indentLevel v
 
           formatKey :: B.ByteString -> P.Doc ann
-          formatKey = P.dquotes . P.pretty . BC.unpack
+          formatKey = P.dquotes . P.pretty . TE.decodeUtf8Lenient
        in P.braces $
             P.line
               <> P.indent indentLevel (P.vcat $ P.punctuate P.comma formattedPairs)
