@@ -88,18 +88,21 @@ parserSpec = do
 
   it "jsonNumber" $ do
     runParser jsonNumber "0" `shouldBe` Right (JNumber (JInt 0), "")
-    runParser jsonNumber "01" `shouldBe` Left (ParserError "Predicate failed with: '0'")
     runParser jsonNumber "123" `shouldBe` Right (JNumber (JInt 123), "")
     runParser jsonNumber "-123" `shouldBe` Right (JNumber (JInt (-123)), "")
     runParser jsonNumber "123foo" `shouldBe` Right (JNumber (JInt 123), "foo")
-    runParser jsonNumber "0.0" `shouldBe` Right (JNumber (JFloat 0.0), "")
-    runParser jsonNumber "-0.0" `shouldBe` Right (JNumber (JFloat (-0.0)), "")
-    runParser jsonNumber "0.1e3" `shouldBe` Right (JNumber (JFloat 100.0), "")
-    runParser jsonNumber "0.1e+3" `shouldBe` Right (JNumber (JFloat 100.0), "")
+    runParser jsonNumber "0.0" `shouldBe` Right (JNumber (JInt 0), "")
+    runParser jsonNumber "-0.0" `shouldBe` Right (JNumber (JInt 0), "")
+    runParser jsonNumber "0.1e3" `shouldBe` Right (JNumber (JInt 100), "")
     runParser jsonNumber "0.1e-3" `shouldBe` Right (JNumber (JFloat 0.0001), "")
-    runParser jsonNumber "0.0e3" `shouldBe` Left (ParserError "bad format")
-    runParser jsonNumber "01.0" `shouldBe` Left (ParserError "bad format")
-    runParser jsonNumber "1.e" `shouldBe` Left (ParserError "bad format")
+    runParser jsonNumber "0.12345e+3" `shouldBe` Right (JNumber (JFloat 123.45), "")
+    runParser jsonNumber "0.0e3" `shouldBe` Right (JNumber (JInt 0), "")
+    runParser jsonNumber "-8.3412" `shouldBe` Right (JNumber (JFloat (-8.3412)), "")
+    runParser jsonNumber "0.1" `shouldBe` Right (JNumber (JFloat 0.1), "")
+
+    runParser jsonNumber "01" `shouldBe` Left (ParserError "Leading zeros in integer literals are not permitted")
+    runParser jsonNumber "01.0" `shouldBe` Left (ParserError "Leading zeros in integer literals are not permitted")
+    runParser jsonNumber "1.e" `shouldBe` Right (JNumber (JInt 1), ".e")
 
   it "jsonString" $ do
     runParser jsonString "\"foo\"" `shouldBe` Right (JString "foo", "")

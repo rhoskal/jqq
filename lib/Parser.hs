@@ -3,7 +3,6 @@ module Parser where
 import Control.Applicative (Alternative (..), (<|>))
 import Control.Monad ((>=>))
 import Data.ByteString qualified as B
-import Data.ByteString.Char8 (readInteger)
 import Data.Word (Word8)
 import Data.Word8 qualified as W
 
@@ -84,13 +83,22 @@ optionMaybe (Parser p) =
       Left _ -> pure (Nothing, input)
       Right (matched, rest) -> pure (Just matched, rest)
 
+option :: a -> Parser a -> Parser a
+option defaultValue p = p <|> return defaultValue
+
 sepBy :: Parser a -> Parser sep -> Parser [a]
 sepBy p sep =
   sepBy1 p sep <|> pure []
 
 sepBy1 :: Parser a -> Parser sep -> Parser [a]
 sepBy1 p sep =
-  (:) <$> p <*> many (sep *> p)
+  ((:) <$> p <*> many (sep *> p)) <?> "Failed to match at least 1"
+
+notFollowedBy :: Parser a -> Parser B.ByteString
+notFollowedBy (Parser p) = Parser $ \input ->
+  case p input of
+    Left _ -> pure ("", input)
+    Right _ -> Left (ParserError "Unable to continue due to predicate success")
 
 ws :: Parser ()
 ws =
@@ -105,7 +113,7 @@ ws =
 lexeme :: Parser a -> Parser a
 lexeme p = ws *> p <* ws
 
-comma, bracketL, bracketR, braceL, braceR, quoteDouble, minus, colon :: Parser Word8
+comma, bracketL, bracketR, braceL, braceR, quoteDouble, minus, plus, colon, period, e :: Parser Word8
 comma = char W._comma
 bracketL = char W._bracketleft
 bracketR = char W._bracketright
@@ -113,7 +121,10 @@ braceL = char W._braceleft
 braceR = char W._braceright
 quoteDouble = char W._quotedbl
 minus = char W._hyphen
+plus = char W._plus
 colon = char W._colon
+period = char W._period
+e = char W._e <|> char W._E
 
 digits :: Parser B.ByteString
 digits = many1 W.isDigit
@@ -156,23 +167,52 @@ stringLiteral :: Parser B.ByteString
 stringLiteral =
   quoteDouble *> manyTill (/= W._quotedbl) <* quoteDouble
 
+integerPart :: Parser [Word8]
+integerPart = do
+  firstDigit <- digit
+  if firstDigit == W._0
+    then do
+      _ <- notFollowedBy digit <?> "Leading zeros in integer literals are not permitted"
+      return [firstDigit]
+    else do
+      restDigits <- many digit
+      return (firstDigit : restDigits)
+
+fractionPart :: Parser Double
+fractionPart = do
+  _ <- period
+  mantissa <- some digit <?> "Expected at least 1 digit (0-9) following the '.'"
+  let num = foldl (\acc x -> acc * 10 + fromIntegral (x - 48)) 0 mantissa
+      len = length mantissa
+  return (num / (10 ^ len))
+
+exponentPart :: Parser Double
+exponentPart = do
+  _ <- e
+  maybeSign <- optionMaybe (plus <|> minus)
+  exponent' <- some digit
+  let num = foldl (\acc x -> acc * 10 + fromIntegral (x - 48)) 0 exponent'
+      factor = case maybeSign of
+        Just w -> if w == W._hyphen then -num else num
+        Nothing -> num
+  return (10 ** factor)
+
 jsonNumber :: Parser JsonValue
-jsonNumber =
-  Parser $ \input -> do
-    let Parser parseMinus = optionMaybe (B.singleton <$> minus)
-    let Parser parseDigits = digits
-    (maybeMinus, rest) <- parseMinus input
-    (ds, rest') <- parseDigits rest
-    let numStr = maybe ds (`B.append` ds) maybeMinus
-    case (readInteger numStr :: Maybe (Integer, B.ByteString)) of
-      Nothing ->
-        Left $
-          ParserError
-            ( "Failed to coerce "
-                <> mconcat ["'", numStr, "'"]
-                <> " to Integer"
-            )
-      Just (num, _) -> pure (JNumber $ JInt num, rest')
+jsonNumber = do
+  maybeMinus <- optionMaybe minus
+  intPart <- integerPart
+  fracPart <- option 0.0 fractionPart
+  expPart <- option 1.0 exponentPart
+  let base = foldl (\acc x -> acc * 10 + fromIntegral (x - 48)) 0 intPart
+      result = case maybeMinus of
+        Nothing -> base + fracPart
+        Just _ -> (-1) * (base + fracPart)
+      finalResult = result * expPart
+  return $
+    JNumber $
+      if (floor finalResult :: Integer) == (ceiling finalResult :: Integer)
+        then JInt $ round finalResult
+        else JFloat finalResult
 
 jsonBool :: Parser JsonValue
 jsonBool =
