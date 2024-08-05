@@ -6,7 +6,9 @@ import Data.ByteString qualified as B
 import Data.Word (Word8)
 import Data.Word8 qualified as W
 
--- | Char Parsers
+-- Char Parsers
+
+-- | Parses a single word `w`. Returns the parsed word (i.e. `w`).
 char :: Word8 -> Parser Word8
 char w =
   Parser $ \input ->
@@ -22,6 +24,7 @@ char w =
                     <> mconcat ["'", slice, "'"]
                 )
 
+-- | Parses a sequence of words given by `bs`. Returns the parsed `ByteString`.
 string :: B.ByteString -> Parser B.ByteString
 string bs =
   Parser $ \input ->
@@ -37,6 +40,8 @@ string bs =
                     <> mconcat ["'", slice, "'"]
                 )
 
+-- | Succeeds for any word for which the supplied predicate returns `True`.
+-- Returns the word that is actually parsed.
 satisfy :: (Word8 -> Bool) -> Parser Word8
 satisfy predicate =
   Parser $ \input ->
@@ -52,10 +57,13 @@ satisfy predicate =
                     <> mconcat ["'", B.singleton w, "'"]
                 )
 
+-- | Parses an ASCII digit (0-9).
 digit :: Parser Word8
 digit = satisfy W.isDigit
 
--- | Combinators
+-- Combinators
+
+-- | Returns the longest (non-empty) `ByteString` satisfying the given predicate.
 many1 :: (Word8 -> Bool) -> Parser B.ByteString
 many1 predicate =
   Parser $ \input ->
@@ -64,18 +72,22 @@ many1 predicate =
           then Left (ParserError "Failed to match at least 1")
           else pure (matched, rest)
 
+-- | Returns the longest (possibly empty) `ByteString` satisfying the given predicate.
 manyTill :: (Word8 -> Bool) -> Parser B.ByteString
 manyTill predicate =
   Parser $ \input ->
     let (matched, rest) = B.span predicate input
      in pure (matched, rest)
 
+-- | Drops the longest (possibly empty) prefix of elements satisfying the predicate.
 skipMany :: (Word8 -> Bool) -> Parser ()
 skipMany predicate =
   Parser $ \input ->
     let rest = B.dropWhile predicate input
      in pure ((), rest)
 
+-- | Attempts to apply parser `p`. If `p` fails without consuming input, it return `Nothing`,
+-- otherwise it returns `Just` the value returned by `p`.
 optionMaybe :: Parser a -> Parser (Maybe a)
 optionMaybe (Parser p) =
   Parser $ \input ->
@@ -83,23 +95,29 @@ optionMaybe (Parser p) =
       Left _ -> pure (Nothing, input)
       Right (matched, rest) -> pure (Just matched, rest)
 
+-- | Attempts to apply parser `p`. If `p` fails without consuming input, it returns the given `defaultValue`,
+-- otherwise the value returned by `p`.
 option :: a -> Parser a -> Parser a
 option defaultValue p = p <|> return defaultValue
 
+-- | Parses /zero/ or more occurrences of `p`, separated by `sep`. Returns a list of values returned by `p`.
 sepBy :: Parser a -> Parser sep -> Parser [a]
 sepBy p sep =
   sepBy1 p sep <|> pure []
 
+-- | Parses /one/ or more occurrences of `p`, separated by `sep`. Returns a list of values returned by `p`.
 sepBy1 :: Parser a -> Parser sep -> Parser [a]
 sepBy1 p sep =
   ((:) <$> p <*> many (sep *> p)) <?> "Failed to match at least 1"
 
+-- | Only succeeds when parser `p` fails. This parser does not consume any input.
 notFollowedBy :: Parser a -> Parser ()
 notFollowedBy (Parser p) = Parser $ \input ->
   case p input of
     Left _ -> pure ((), input)
     Right _ -> Left (ParserError "Unable to continue due to predicate success")
 
+-- | Whitespace consumer.
 ws :: Parser ()
 ws =
   let isSpace :: Word8 -> Bool
@@ -129,7 +147,8 @@ e = char W._e <|> char W._E
 digits :: Parser B.ByteString
 digits = many1 W.isDigit
 
--- | Parsers
+-- Parsers
+
 data JsonValue
   = JBool !Bool
   | JNull
@@ -242,17 +261,18 @@ parseJson :: B.ByteString -> Either ParserError JsonValue
 parseJson input =
   fst <$> runParser jsonValue input
 
+-- | Behaves as parser `p`, but whenever the parser `p` fails without consuming any input,
+-- it replaces expect error messages with the expect error message `msg`.
 (<?>) :: Parser a -> B.ByteString -> Parser a
-(Parser p) <?> errMsg =
+(Parser p) <?> msg =
   Parser $ \input ->
     case p input of
-      Left _ -> Left (ParserError errMsg)
+      Left _ -> Left (ParserError msg)
       Right result -> Right result
 
 newtype ParserError = ParserError B.ByteString
   deriving (Eq, Show)
 
--- | Custom Parser type
 newtype Parser a = Parser
   { runParser :: B.ByteString -> Either ParserError (a, B.ByteString)
   }
