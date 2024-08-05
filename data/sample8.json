@@ -1,0 +1,19 @@
+{
+  "😀": {
+    "name": "grinning face",
+    "slug": "grinning_face",
+    "group": "Smileys & Emotion",
+    "emoji_version": "2.0",
+    "unicode_version": "6.1",
+    "skin_tone_support": false
+  },
+  "👋": {
+    "name": "waving hand",
+    "slug": "waving_hand",
+    "group": "People & Body",
+    "emoji_version": "2.0",
+    "unicode_version": "6.0",
+    "skin_tone_support": true,
+    "skin_tone_support_unicode_version": "8.0"
+  }
+}
