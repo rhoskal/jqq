@@ -36,7 +36,7 @@ appOptions =
 spacingOpt :: Parser Int
 spacingOpt =
   option
-    positiveInt
+    assertPositive
     ( long "spacing"
         <> help "How many spaces should we use?"
         <> showDefault
@@ -44,8 +44,8 @@ spacingOpt =
         <> metavar "INT"
     )
 
-positiveInt :: ReadM Int
-positiveInt =
+assertPositive :: ReadM Int
+assertPositive =
   let checkPositive i
         | i > 0 = pure i
         | otherwise = readerError "Value must be greater than 0"
