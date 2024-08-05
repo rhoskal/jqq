@@ -7,12 +7,9 @@ let
   ghc = pkgs.haskell.compiler.ghc98 haskellDeps;
 
   inputs = [
-    pkgs.cabal-install
     pkgs.gcc
-    pkgs.ghc
     pkgs.ghcid
     pkgs.haskellPackages.hlint
-    pkgs.haskellPackages.lsp
     pkgs.llvm
     pkgs.nixfmt
     pkgs.ormolu

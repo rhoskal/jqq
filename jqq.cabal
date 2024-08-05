@@ -88,7 +88,7 @@ library
 
     -- Other library packages from which modules are imported.
     build-depends:
-        base ^>=4.18.2.1,
+        base ^>=4.19.1.0,
         bytestring,
         prettyprinter,
         text,
@@ -117,7 +117,7 @@ executable jqq
 
     -- Other library packages from which modules are imported.
     build-depends:
-        base ^>=4.18.2.1,
+        base ^>=4.19.1.0,
         jqq,
         bytestring,
         optparse-applicative,
@@ -159,7 +159,7 @@ test-suite jqq-test
 
     -- Test dependencies.
     build-depends:
-        base ^>=4.18.2.1,
+        base ^>=4.19.1.0,
         jqq,
         hspec,
         word8
