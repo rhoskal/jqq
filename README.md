@@ -2,6 +2,22 @@
 
 A `jq`-lite clone.
 
+```sh
+λ jqq --help
+jqq - a simple 'jq' clone
+
+Usage: jqq [--indent INT] ((-f|--file FILE_PATH) | --stdin) [-d|--debug]
+
+  Parse and format JSON input
+
+Available options:
+  --indent INT             Desired indentation level (default: 2)
+  -f,--file FILE_PATH      Path to JSON file
+  --stdin                  Read JSON from stdin
+  -d,--debug               Show internal `JsonValue`
+  -h,--help                Show this help text
+```
+
 ## Examples
 
 `jqq` commands:

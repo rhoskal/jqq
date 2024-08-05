@@ -4,7 +4,7 @@ import Data.ByteString qualified as B
 import Data.Text.IO qualified as TIO
 import Options.Applicative
 import Parser (ParserError (..), parseJson)
-import Prettify (format)
+import Prettify
 import Types
 
 main :: IO ()
@@ -15,7 +15,7 @@ main = do
       FileInput filePath -> B.readFile filePath
       StdIn -> B.getContents
   case parseJson bsContent of
-    Right json -> TIO.putStrLn (format (optSpacing options) json)
+    Right json -> TIO.putStrLn (pretty (optIndent options) json)
     Left (ParserError err) -> B.putStr err
   where
     opts =
@@ -29,20 +29,21 @@ main = do
 appOptions :: Parser Options
 appOptions =
   Options
-    <$> spacingOpt
+    <$> indentationOpt
     <*> inputOpt
     <*> debugOpt
 
-spacingOpt :: Parser Int
-spacingOpt =
-  option
-    assertPositive
-    ( long "spacing"
-        <> help "How many spaces should we use?"
-        <> showDefault
-        <> value 2
-        <> metavar "INT"
-    )
+indentationOpt :: Parser Indent
+indentationOpt =
+  Indent
+    <$> option
+      assertPositive
+      ( long "indent"
+          <> help "Desired indentation level"
+          <> showDefault
+          <> value 2
+          <> metavar "INT"
+      )
 
 assertPositive :: ReadM Int
 assertPositive =
@@ -77,5 +78,5 @@ debugOpt =
   switch
     ( long "debug"
         <> short 'd'
-        <> help "show internal AST"
+        <> help "Show internal `JsonValue`"
     )
