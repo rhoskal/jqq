@@ -94,10 +94,10 @@ sepBy1 :: Parser a -> Parser sep -> Parser [a]
 sepBy1 p sep =
   ((:) <$> p <*> many (sep *> p)) <?> "Failed to match at least 1"
 
-notFollowedBy :: Parser a -> Parser B.ByteString
+notFollowedBy :: Parser a -> Parser ()
 notFollowedBy (Parser p) = Parser $ \input ->
   case p input of
-    Left _ -> pure ("", input)
+    Left _ -> pure ((), input)
     Right _ -> Left (ParserError "Unable to continue due to predicate success")
 
 ws :: Parser ()
