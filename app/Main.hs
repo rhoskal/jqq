@@ -1,5 +1,6 @@
 module Main where
 
+import Control.Monad (when)
 import Data.ByteString qualified as B
 import Data.Text.IO qualified as TIO
 import Options.Applicative
@@ -15,7 +16,9 @@ main = do
       FileInput filePath -> B.readFile filePath
       StdIn -> B.getContents
   case parseJson bsContent of
-    Right json -> TIO.putStrLn (pretty (optIndent options) json)
+    Right json -> do
+      TIO.putStrLn $ pretty (optIndent options) json
+      when (optDebug options) $ print json
     Left (ParserError err) -> B.putStr err
   where
     opts =
