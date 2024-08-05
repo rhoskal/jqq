@@ -28,12 +28,43 @@ jqq -f data/sample4.json
 cat data/sample4.json | jqq --stdin
 ```
 
-`jq` equivalent commands:
+equivalent `jq` commands:
 
 ```sh
 jq '.' data/sample4.json
 
 cat data/sample4.json | jq '.'
+```
+
+## Debugging
+
+```sh
+jqq -f data/sample8.json -d
+{
+  "😀": {
+    "name": "grinning face",
+    "slug": "grinning_face",
+    "group": "Smileys & Emotion",
+    "emoji_version": "2.0",
+    "unicode_version": "6.1",
+    "skin_tone_support": false
+  },
+  ...
+}
+JObject
+  [
+    ( "ð\x9f\x98\x80", JObject
+      [
+        ( "name", JString "grinning face" ),
+        ( "slug", JString "grinning_face" ),
+        ( "group", JString "Smileys & Emotion" ),
+        ( "emoji_version", JString "2.0" ),
+        ( "unicode_version", JString "6.1" ),
+        ( "skin_tone_support", JBool False )
+      ]
+    ),
+    ...
+  ]
 ```
 
 ## References

@@ -6,6 +6,12 @@ import Data.Text.IO qualified as TIO
 import Options.Applicative
 import Parser (ParserError (..), parseJson)
 import Prettify
+import Text.Pretty.Simple
+  ( CheckColorTty (..),
+    OutputOptions (..),
+    defaultOutputOptionsLightBg,
+    pPrintOpt,
+  )
 import Types
 
 main :: IO ()
@@ -18,7 +24,12 @@ main = do
   case parseJson bsContent of
     Right json -> do
       TIO.putStrLn $ pretty (optIndent options) json
-      when (optDebug options) $ print json
+      let outputOpts =
+            defaultOutputOptionsLightBg
+              { outputOptionsIndentAmount = 2,
+                outputOptionsCompact = True
+              }
+      when (optDebug options) $ pPrintOpt CheckColorTty outputOpts json
     Left (ParserError err) -> B.putStr err
   where
     opts =
