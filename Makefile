@@ -46,7 +46,6 @@ build-watch: ## Watch files for changes and re-build
 clean: ## Remove artificats
 	cabal clean
 
-
 # Development targets
 # -------------------
 
