@@ -36,7 +36,7 @@
               with pkgs;
               [
                 git
-                haskell.compiler.ghc98
+                haskell.compiler.ghc910
                 haskell-language-server
                 haskellPackages.cabal-install
                 haskellPackages.ghcid
